@@ -32,34 +32,25 @@ def home():
 def predecir():
     try:
         datos = request.get_json()
-        favoritos = datos.get("cultivos_favoritos", [])
         df = pd.DataFrame([datos])
 
-        top_resultado, todos_ordenados = predecir_cultivo_topN(
-            modelo, df, le_producto, le_estacion, le_categoria, top_n=3
+        _, todos_ordenados = predecir_cultivo_topN(
+            modelo, df, le_producto, le_estacion, le_categoria, top_n=len(le_producto.classes_)
         )
 
-        cultivos_recomendados = [cultivo for cultivo, _ in top_resultado]
-        favoritos_en_top = set(favoritos).intersection(set(cultivos_recomendados))
-
-        if favoritos and not favoritos_en_top:
-            for cultivo, prob in todos_ordenados:
-                if cultivo in favoritos and cultivo not in cultivos_recomendados:
-                    cultivos_recomendados[-1] = cultivo
-                    break
-
-        respuesta = []
-        for cultivo in cultivos_recomendados:
-            prob = next((p for c, p in todos_ordenados if c == cultivo), 0.0)
-            respuesta.append({
+        respuesta = [
+            {
                 "cultivo": cultivo,
                 "probabilidad": round(prob * 100, 2)
-            })
+            }
+            for cultivo, prob in todos_ordenados
+        ]
 
         return jsonify({"recomendaciones": respuesta})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
 
 port = int(os.environ.get("PORT", 5000))
 app.run(host="0.0.0.0", port=port)
